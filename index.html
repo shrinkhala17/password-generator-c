@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PassForge — Password Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --panel: #1a1a26;
+      --border: #2a2a3d;
+      --accent: #00e5ff;
+      --accent2: #7c3aed;
+      --accent3: #f59e0b;
+      --text: #e8e8f0;
+      --muted: #6b6b8a;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warn: #f59e0b;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Grid background ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Glow orbs ── */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(100px);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.18;
+    }
+    .orb-1 { width: 500px; height: 500px; background: var(--accent2); top: -150px; right: -100px; }
+    .orb-2 { width: 400px; height: 400px; background: var(--accent); bottom: -100px; left: -100px; }
+
+    /* ── Layout ── */
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 60px 24px 80px;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      margin-bottom: 52px;
+      animation: fadeDown 0.7s ease both;
+    }
+
+    .logo-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, rgba(0,229,255,0.1), rgba(124,58,237,0.1));
+      border: 1px solid rgba(0,229,255,0.2);
+      border-radius: 100px;
+      padding: 6px 16px;
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .logo-badge span { color: var(--muted); }
+
+    h1 {
+      font-size: clamp(2.4rem, 6vw, 3.6rem);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #fff 30%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 12px;
+    }
+
+    .tagline {
+      color: var(--muted);
+      font-size: 1rem;
+      font-weight: 400;
+      letter-spacing: 0.01em;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px;
+      animation: fadeUp 0.7s ease 0.1s both;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.4;
+    }
+
+    /* ── Password display ── */
+    .password-box {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px 20px;
+      margin-bottom: 28px;
+      position: relative;
+      min-height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      transition: border-color 0.3s;
+    }
+    .password-box:hover { border-color: rgba(0,229,255,0.3); }
+
+    #password-display {
+      font-family: 'Space Mono', monospace;
+      font-size: clamp(1rem, 3vw, 1.35rem);
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      word-break: break-all;
+      color: var(--accent);
+      flex: 1;
+      line-height: 1.5;
+      transition: opacity 0.2s;
+    }
+    #password-display.placeholder { color: var(--muted); font-size: 0.9rem; font-weight: 400; }
+
+    .copy-btn {
+      background: rgba(0,229,255,0.08);
+      border: 1px solid rgba(0,229,255,0.2);
+      color: var(--accent);
+      border-radius: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transition: all 0.2s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .copy-btn:hover { background: rgba(0,229,255,0.15); border-color: var(--accent); }
+    .copy-btn.copied { background: rgba(16,185,129,0.1); border-color: var(--success); color: var(--success); }
+
+    /* ── Strength bar ── */
+    .strength-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .strength-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .strength-bar-track {
+      flex: 1;
+      height: 5px;
+      background: var(--panel);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .strength-bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      width: 0%;
+      transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s;
+    }
+    .strength-text {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      min-width: 60px;
+      text-align: right;
+    }
+
+    /* ── Section label ── */
+    .section-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    /* ── Length slider ── */
+    .length-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .length-value {
+      font-family: 'Space Mono', monospace;
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--accent);
+      line-height: 1;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 5px;
+      background: var(--panel);
+      border-radius: 99px;
+      outline: none;
+      margin-bottom: 28px;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 12px rgba(0,229,255,0.5);
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+      box-shadow: 0 0 20px rgba(0,229,255,0.7);
+    }
+
+    /* ── Toggles ── */
+    .toggles-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+
+    .toggle-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      user-select: none;
+    }
+    .toggle-item:hover { border-color: rgba(0,229,255,0.25); }
+    .toggle-item.active {
+      border-color: rgba(0,229,255,0.4);
+      background: rgba(0,229,255,0.05);
+    }
+
+    .toggle-info { display: flex; flex-direction: column; gap: 2px; }
+    .toggle-name { font-size: 0.85rem; font-weight: 600; color: var(--text); }
+    .toggle-chars {
+      font-family: 'Space Mono', monospace;
+      font-size: 9px;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+    }
+
+    .toggle-switch {
+      width: 36px; height: 20px;
+      background: var(--border);
+      border-radius: 99px;
+      position: relative;
+      transition: background 0.25s;
+      flex-shrink: 0;
+    }
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: var(--muted);
+      top: 3px; left: 3px;
+      transition: transform 0.25s, background 0.25s;
+    }
+    .toggle-item.active .toggle-switch { background: rgba(0,229,255,0.25); }
+    .toggle-item.active .toggle-switch::after { transform: translateX(16px); background: var(--accent); }
+
+    /* ── Generate button ── */
+    .generate-btn {
+      width: 100%;
+      padding: 18px;
+      background: linear-gradient(135deg, var(--accent2), #4f46e5);
+      border: none;
+      border-radius: 14px;
+      color: #fff;
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 8px 30px rgba(124,58,237,0.3);
+    }
+    .generate-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 40px rgba(124,58,237,0.5);
+    }
+    .generate-btn:active { transform: translateY(0); }
+    .generate-btn::before {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+      transition: left 0.5s;
+    }
+    .generate-btn:hover::before { left: 100%; }
+
+    /* ── Stats row ── */
+    .stats-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .stat-chip {
+      flex: 1;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      text-align: center;
+    }
+    .stat-val {
+      font-family: 'Space Mono', monospace;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent);
+      display: block;
+    }
+    .stat-key {
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      display: block;
+      margin-top: 2px;
+    }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      margin-top: 44px;
+      animation: fadeUp 0.7s ease 0.3s both;
+    }
+    .author-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 10px 20px;
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+    }
+    .author-tag strong { color: var(--accent); }
+    .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--border); }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--success);
+      color: #fff;
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      padding: 12px 24px;
+      border-radius: 99px;
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      z-index: 999;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── Animations ── */
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes flash {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
+    .flash { animation: flash 0.15s ease 2; }
+
+    @media (max-width: 480px) {
+      .toggles-grid { grid-template-columns: 1fr; }
+      .stats-row { flex-wrap: wrap; }
+      .stat-chip { min-width: calc(50% - 5px); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<div class="container">
+
+  <!-- Header -->
+  <header>
+    <div class="logo-badge">🔐 <span>v1.0</span> PassForge</div>
+    <h1>Password Generator</h1>
+    <p class="tagline">Create strong, secure passwords in seconds.</p>
+  </header>
+
+  <!-- Main Card -->
+  <div class="card">
+
+    <!-- Password Output -->
+    <div class="password-box">
+      <span id="password-display" class="placeholder">Click "Generate" to create a password</span>
+      <button class="copy-btn" id="copy-btn" onclick="copyPassword()">Copy</button>
+    </div>
+
+    <!-- Strength Indicator -->
+    <div class="strength-row">
+      <span class="strength-label">Strength</span>
+      <div class="strength-bar-track">
+        <div class="strength-bar-fill" id="strength-bar"></div>
+      </div>
+      <span class="strength-text" id="strength-text" style="color: var(--muted)">—</span>
+    </div>
+
+    <!-- Length -->
+    <div class="section-label">Password Length</div>
+    <div class="length-row">
+      <span style="color:var(--muted); font-size:0.85rem;">4</span>
+      <span class="length-value" id="length-display">16</span>
+      <span style="color:var(--muted); font-size:0.85rem;">128</span>
+    </div>
+    <input type="range" id="length-slider" min="4" max="128" value="16"
+           oninput="updateLength(this.value)" />
+
+    <!-- Character Toggles -->
+    <div class="section-label">Character Types</div>
+    <div class="toggles-grid">
+      <div class="toggle-item active" id="toggle-upper" onclick="toggleOption('upper')">
+        <div class="toggle-info">
+          <span class="toggle-name">Uppercase</span>
+          <span class="toggle-chars">A B C … X Y Z</span>
+        </div>
+        <div class="toggle-switch"></div>
+      </div>
+      <div class="toggle-item active" id="toggle-lower" onclick="toggleOption('lower')">
+        <div class="toggle-info">
+          <span class="toggle-name">Lowercase</span>
+          <span class="toggle-chars">a b c … x y z</span>
+        </div>
+        <div class="toggle-switch"></div>
+      </div>
+      <div class="toggle-item active" id="toggle-numbers" onclick="toggleOption('numbers')">
+        <div class="toggle-info">
+          <span class="toggle-name">Numbers</span>
+          <span class="toggle-chars">0 1 2 … 7 8 9</span>
+        </div>
+        <div class="toggle-switch"></div>
+      </div>
+      <div class="toggle-item active" id="toggle-special" onclick="toggleOption('special')">
+        <div class="toggle-info">
+          <span class="toggle-name">Symbols</span>
+          <span class="toggle-chars">! @ # $ % ^ &amp; *</span>
+        </div>
+        <div class="toggle-switch"></div>
+      </div>
+    </div>
+
+    <!-- Generate Button -->
+    <button class="generate-btn" onclick="generatePassword()">⚡ Generate Password</button>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-chip">
+        <span class="stat-val" id="stat-length">16</span>
+        <span class="stat-key">Length</span>
+      </div>
+      <div class="stat-chip">
+        <span class="stat-val" id="stat-pool">—</span>
+        <span class="stat-key">Pool Size</span>
+      </div>
+      <div class="stat-chip">
+        <span class="stat-val" id="stat-entropy">—</span>
+        <span class="stat-key">Entropy (bits)</span>
+      </div>
+      <div class="stat-chip">
+        <span class="stat-val" id="stat-combos">—</span>
+        <span class="stat-key">Combinations</span>
+      </div>
+    </div>
+
+  </div><!-- /card -->
+
+  <!-- Footer -->
+  <footer>
+    <div class="author-tag">
+      Built by <strong>shrinkhala17</strong>
+      <span class="dot"></span>
+      C Language Project
+      <span class="dot"></span>
+      github.com/shrinkhala17
+    </div>
+  </footer>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">✓ Copied to clipboard!</div>
+
+<script>
+  const CHARS = {
+    upper:   'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+    lower:   'abcdefghijklmnopqrstuvwxyz',
+    numbers: '0123456789',
+    special: '!@#$%^&*()-_=+[]{}|;:,.<>?'
+  };
+
+  const state = { upper: true, lower: true, numbers: true, special: true };
+  let currentPassword = '';
+
+  function toggleOption(key) {
+    const active = Object.values(state).filter(Boolean).length;
+    if (state[key] && active === 1) return; // keep at least one
+    state[key] = !state[key];
+    document.getElementById('toggle-' + key).classList.toggle('active', state[key]);
+  }
+
+  function updateLength(val) {
+    document.getElementById('length-display').textContent = val;
+    document.getElementById('stat-length').textContent = val;
+  }
+
+  function buildPool() {
+    return Object.entries(state)
+      .filter(([, on]) => on)
+      .map(([k]) => CHARS[k])
+      .join('');
+  }
+
+  function generatePassword() {
+    const length = parseInt(document.getElementById('length-slider').value);
+    const pool = buildPool();
+    const poolSize = pool.length;
+
+    // Ensure at least one char from each active type
+    let pwd = [];
+    Object.entries(state).forEach(([k, on]) => {
+      if (on) pwd.push(CHARS[k][Math.floor(Math.random() * CHARS[k].length)]);
+    });
+    while (pwd.length < length) {
+      pwd.push(pool[Math.floor(Math.random() * poolSize)]);
+    }
+    // Shuffle
+    for (let i = pwd.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pwd[i], pwd[j]] = [pwd[j], pwd[i]];
+    }
+    currentPassword = pwd.join('');
+
+    const display = document.getElementById('password-display');
+    display.textContent = currentPassword;
+    display.classList.remove('placeholder');
+    display.classList.add('flash');
+    setTimeout(() => display.classList.remove('flash'), 300);
+
+    updateStrength(currentPassword, poolSize);
+    updateStats(length, poolSize);
+
+    // Reset copy button
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = 'Copy';
+    btn.classList.remove('copied');
+  }
+
+  function updateStrength(pwd, poolSize) {
+    const entropy = Math.log2(Math.pow(poolSize, pwd.length));
+    const bar = document.getElementById('strength-bar');
+    const txt = document.getElementById('strength-text');
+
+    let pct, color, label;
+    if (entropy < 40)       { pct = 20; color = '#ef4444'; label = 'Weak'; }
+    else if (entropy < 60)  { pct = 45; color = '#f59e0b'; label = 'Fair'; }
+    else if (entropy < 80)  { pct = 65; color = '#eab308'; label = 'Good'; }
+    else if (entropy < 100) { pct = 82; color = '#10b981'; label = 'Strong'; }
+    else                    { pct = 100; color = '#00e5ff'; label = 'Extreme'; }
+
+    bar.style.width = pct + '%';
+    bar.style.background = color;
+    txt.style.color = color;
+    txt.textContent = label;
+  }
+
+  function updateStats(length, poolSize) {
+    document.getElementById('stat-length').textContent = length;
+    document.getElementById('stat-pool').textContent = poolSize;
+    const entropy = (length * Math.log2(poolSize)).toFixed(1);
+    document.getElementById('stat-entropy').textContent = entropy;
+
+    // Approximate combinations as 10^(entropy * log10(2))
+    const exp = (entropy * Math.log10(2));
+    document.getElementById('stat-combos').textContent = '10^' + Math.floor(exp);
+  }
+
+  function copyPassword() {
+    if (!currentPassword) return;
+    navigator.clipboard.writeText(currentPassword).then(() => {
+      const btn = document.getElementById('copy-btn');
+      btn.textContent = '✓ Copied';
+      btn.classList.add('copied');
+      const toast = document.getElementById('toast');
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+        btn.textContent = 'Copy';
+        btn.classList.remove('copied');
+      }, 2000);
+    });
+  }
+
+  // Init stats on load
+  updateLength(16);
+  updateStats(16, buildPool().length);
+</script>
+
+</body>
+</html>
